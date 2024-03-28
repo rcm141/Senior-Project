@@ -1,0 +1,31 @@
+{
+  "name": "my extension",
+  "manifest_version": 3,
+  "version": "1.0",
+  
+  "description": "it's my extension",
+  "devtools_page": "devtools.html",
+
+  "host-permissions": ["https://localhost/"],
+
+  "permissions" : [
+      "tabs",
+      "scripting",
+      "sidePanel",
+      "storage",
+      "https://localhost:8000/"
+  ],
+  "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "run_at": "document_idle",
+      "js": [
+        "scripts/content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
+  }],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

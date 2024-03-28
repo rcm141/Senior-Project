@@ -1,0 +1,63 @@
+@property --angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+.selector {
+    position: relative;
+}
+
+.selector:hover::after {
+    pointer-events: none;
+
+    position: absolute;
+    z-index: 0;
+    content: '';
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    box-sizing: border-box;
+
+    /*border: 2px solid;*/
+
+    /*background:rgba(0, 85, 255, 0.25);*/
+
+    padding: 3px;
+    background-image: conic-gradient(
+        from var(--angle),
+        #fd1892 0%,
+        #b827fc 20%,
+        #2c90fc 40%,
+        #b8fd33 60%,
+        #fec837 80%,
+        #fd1892 100%
+        );
+    background-size: auto;
+    background-clip: padding-box;
+
+    -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+          mask-composite: exclude;
+    animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+   0% {
+        --angle:0deg;
+   }
+   50% {
+        --angle:180deg;
+   }
+   100% {
+        --angle:360deg;
+   }
+}
+
+body {
+    background-color: white;
+}
