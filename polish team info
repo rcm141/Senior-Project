@@ -1,0 +1,43 @@
+import re
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+
+_BASE_URL = "http://www.90minut.pl"
+
+def main():
+    league_soup = soup_init(_BASE_URL)
+    league_soup = soup_init(_BASE_URL + league_soup.find(re.compile("[a-z]+"), string=re.compile("23.*24")).get('href'))
+    league_soup = soup_init(_BASE_URL + league_soup.find(re.compile("[a-z]+"), string=re.compile("region", re.IGNORECASE)).get('href'))
+    region_urls = [league_url.get('href') for league_url in league_soup.find_all(re.compile("[a-z]+"), string=re.compile("zpn", re.IGNORECASE))] 
+    
+    for region_url in region_urls:
+        soup_init(_BASE_URL + region_url)
+        league_urls = [league_url.get('href') for league_url in league_soup.find_all(re.compile("[a-z]+"), string=re.compile("grupa", re.IGNORECASE))] 
+        
+        for league_url in league_urls:
+            soup_init(_BASE_URL + league_url)
+            print(league_soup.find("table", class_="main2").find("b").text)
+            team_urls = [team.get('href') for team in league_soup.find("table", class_="main2").find_all("a",re.compile("[a-z]+"))]
+            
+            for team_url in team_urls:
+                soup_init(_BASE_URL + team_url)
+                print(league_soup.find("table", class_="main").find("b").text)
+                
+                for row in league_soup.find("table", class_="main").find_all("tr"):
+                    if("UZUPEŁNIJ DANE" in row.text.upper()):
+                        break
+                    else:
+                        print(row.text)
+
+def soup_init(webpage):
+    response = requests.get(webpage)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    return soup 
+
+if __name__ == '__main__':
+    main()
