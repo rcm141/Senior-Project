@@ -1,11 +1,6 @@
 import re
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from urllib.parse import urljoin
 
 _BASE_URL = "http://www.90minut.pl"
 _YEAR = "23"
@@ -465,14 +460,22 @@ _ENDLINK_ORDERINGS = {'promotion_over_relegation': True, 'promotion_over_sibling
     #Uncomment first four lines if previous not present
 
 def main():
-    #overview = comps_at_page(_BASE_URL + soup_init(_BASE_URL).find(re.compile("[a-z]+"), string=re.compile("23.*24")).get('href'))
+    #overview = comps_at_page(_BASE_URL + get_link_to_year_page(_BASE_URL))
     #print(nested_comps(overview))
     #top_of_pyramid(nested_comps(overview))
     #top_of_pyramid(_COMPS_DICT[0])
     #determine_endlink_groupings()
     
-    for elem in get_all_comps_links(_COMPS_DICT[0], []):
-        write_league_info(elem, get_league_name(elem, _COMPS_DICT[0]))
+    #for elem in get_all_comps_links(_COMPS_DICT[0], []):
+    #    write_league_info(elem, get_league_name(elem, _COMPS_DICT[0]))
+    test_link = "/liga/1/liga12974.html"
+    #print("siblings of",get_league_name(test_link, _COMPS_DICT[0]),"is",find_siblings(test_link))
+
+    write_team_info(test_link)
+
+def get_link_to_year_page(webpage):
+    soup = soup_init()
+    return _BASE_URL + soup.find(re.compile("[a-z]+"), string=re.compile(_YEAR+".*"+_YEAR+1)).get('href')
 
 def comps_at_page(webpage_with_links):
     league_soup = soup_init(webpage_with_links)
@@ -561,6 +564,21 @@ def is_league_page(background_colors):
                 return True
     return False
 
+def write_team_info(league_url):
+    soup = soup_init(_BASE_URL + league_url)
+    print(get_league_name(league_url, _COMPS_DICT[0]))
+    team_urls = [team.get('href') for team in soup.find("table", class_="main2").find_all("a",re.compile("[a-z]+"))]
+            
+    for team_url in team_urls:
+        soup = soup_init(_BASE_URL + team_url)
+        #print(soup.find("table", class_="main").find("b").text)
+                
+        for row in soup.find("table", class_="main").find_all("tr"):
+            if("UZUPEŁNIJ DANE" in row.text.upper()):
+                break
+            else:
+                print(row.text)
+
 def nested_comps(comp_overview):
     for i in range(len(list(comp_overview[0].keys()))):
         if(is_league_page(get_background_colors(_BASE_URL + list(comp_overview[0].keys())[i])) == False):
@@ -568,7 +586,7 @@ def nested_comps(comp_overview):
             comp_overview[0][list(comp_overview[0].keys())[i]] = overview_updated[0]
 
     return comp_overview
-        
+#does get_all_comps_links need to catch compy_links return off the recursive call?    
 def get_all_comps_links(dict_instance, compy_links):
     for value in dict_instance.values():
         if(type(value) == dict):
@@ -637,6 +655,8 @@ def get_league_name(league_link, comps):
             league_name = get_league_name(league_link, comps.get(key))
         if(key == league_link):
             return comps.get(key)
+        if(len(league_name) > 0):
+            break
     
     return league_name
 
@@ -686,8 +706,46 @@ def recurse_endlink_groupings(league_dict, boolean_dict, higher_comp_link):
             ret_dict = recurse_endlink_groupings(league_pages_dict, ret_dict, list(comps_at_page(_BASE_URL + higher_comp_link)[0].keys())[len(list(comps_at_page(_BASE_URL + higher_comp_link)[0].keys())) - 1])
     
     return ret_dict
-
+#finds all the links at a page that are siblings of some page
+#need all the links at a page that are siblings of the page
+"""
 def find_siblings(link): 
+    p_pages = []
+    pp_pages = []
+    links_with_matches = []
+    
+    p_pages.append(list(comps_at_page(_BASE_URL + link)[0].keys()))
+    for elem in p_pages[0]:
+        pp_pages.append(list(comps_at_page(_BASE_URL + elem)[0].keys()))
+    matches_on_links = {}
+    for link in p_pages[0]:
+        matches_on_links[link] = 0
+    print("list(matches_on_links.keys())",list(matches_on_links.keys()))
+    for outer_elem in pp_pages:
+        print("outer_elem",outer_elem)
+        for elem in outer_elem:
+            print("elem",elem)
+            try:
+                test = p_pages[0][p_pages[0].index(elem)]
+            except: 
+                test = None
+            if(test != None):
+                print("test",test)
+                matches_on_links[test] = matches_on_links.get(test) + 1
+    print("matches_on_links",matches_on_links)
+    for match_link in list(matches_on_links.keys()):
+        if(matches_on_links.get(match_link) > 0):
+            links_with_matches.append(match_link)
+
+    for webpage in links_with_matches:
+        league_soup = soup_init(webpage)
+        #move this to bes 
+        for i in range(len([tag.get('href') for tag in list(league_soup.find_all("table",class_="main"))[len(league_soup.find_all("table",class_="main") ) - 1 - 1].find_all("a")])):
+            if()
+
+    return links_with_matches
+
+def find_siblings_at_level(link): 
     p_pages = []
     pp_pages = []
     links_with_matches = []
@@ -711,7 +769,7 @@ def find_siblings(link):
             links_with_matches.append(match_link)
 
     return links_with_matches
-
+"""
 def represent_league_table(table_tag):
     table_row_colors = {}
     for i in range(len(list(table_tag.find_all("tr")))):
