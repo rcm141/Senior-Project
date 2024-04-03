@@ -466,12 +466,9 @@ def main():
     #top_of_pyramid(_COMPS_DICT[0])
     #determine_endlink_groupings()
     
-    #for elem in get_all_comps_links(_COMPS_DICT[0], []):
-    #    write_league_info(elem, get_league_name(elem, _COMPS_DICT[0]))
-    test_link = "/liga/1/liga12974.html"
+    for elem in get_all_comps_links(_COMPS_DICT[0], []):
+        write_league_info(elem, get_league_name(elem, _COMPS_DICT[0]))
     #print("siblings of",get_league_name(test_link, _COMPS_DICT[0]),"is",find_siblings(test_link))
-
-    write_team_info(test_link)
 
 def get_link_to_year_page(webpage):
     soup = soup_init()
@@ -570,9 +567,7 @@ def write_team_info(league_url):
     team_urls = [team.get('href') for team in soup.find("table", class_="main2").find_all("a",re.compile("[a-z]+"))]
             
     for team_url in team_urls:
-        soup = soup_init(_BASE_URL + team_url)
-        #print(soup.find("table", class_="main").find("b").text)
-                
+        soup = soup_init(_BASE_URL + team_url)                
         for row in soup.find("table", class_="main").find_all("tr"):
             if("UZUPEŁNIJ DANE" in row.text.upper()):
                 break
@@ -631,22 +626,24 @@ def write_league_info(league_webpage, league_name):
     adjustment = 0
     if(_ENDLINK_ORDERINGS.get('promotion_over_relegation')):
         adjustment += 1
-    for i in range(len(find_siblings(league_webpage))):
-        if(find_siblings(league_webpage)[i] == league_webpage):
-            if(_ENDLINK_ORDERINGS.get('promotion_over_siblings')):
-                adjustment += 1
-    if(league_webpage == _PYRAMID_TOPPER):
-        print("Promoting to: ","Super Cup")
-    else:
-        print("Promoting to: ",[tag.text for tag in list(league_soup.find_all("table",class_="main"))[len(league_soup.find_all("table",class_="main") ) - 1 - 1 - adjustment].find_all("a")])
+    #if the league is itself a sibling league, it will have sibling leagues listed in its end links
+    if(is_sibling(league_webpage)):
+        if(_ENDLINK_ORDERINGS.get('promotion_over_siblings')):
+            adjustment += 1
+    if((teams_auto_promoted + teams_to_playoffs) > 0):
+        if(league_webpage == _PYRAMID_TOPPER):
+            print("League Champion of Nation")
+        else:
+            print("Promoting to: ",[tag.text for tag in list(league_soup.find_all("table",class_="main"))[len(league_soup.find_all("table",class_="main") ) - 1 - 1 - adjustment].find_all("a")])
     adjustment = 0
-    for i in range(len(find_siblings(league_webpage))):
-        if((find_siblings(league_webpage)[i] == league_webpage)):
-            if(not(_ENDLINK_ORDERINGS.get('siblings_over_relegation'))):
-                adjustment += 1
+    #for i in range(len(find_siblings(league_webpage))):
+    if(is_sibling(league_webpage)):
+        if(not(_ENDLINK_ORDERINGS.get('siblings_over_relegation'))):
+            adjustment += 1
     if(not(_ENDLINK_ORDERINGS.get('promotion_over_relegation'))):
         adjustment += 1
-    print("Relegating to: ",[tag.text for tag in list(league_soup.find_all("table",class_="main"))[len(league_soup.find_all("table",class_="main") ) - 1 - 1 - adjustment].find_all("a")])
+    if((teams_auto_relegated + teams_to_playoffs) > 0):
+        print("Relegating to: ",[tag.text for tag in list(league_soup.find_all("table",class_="main"))[len(league_soup.find_all("table",class_="main") ) - 1 - 1 - adjustment].find_all("a")])
 
 def get_league_name(league_link, comps):
     league_name = ""
@@ -737,14 +734,126 @@ def find_siblings(link):
         if(matches_on_links.get(match_link) > 0):
             links_with_matches.append(match_link)
 
-    for webpage in links_with_matches:
-        league_soup = soup_init(webpage)
-        #move this to bes 
-        for i in range(len([tag.get('href') for tag in list(league_soup.find_all("table",class_="main"))[len(league_soup.find_all("table",class_="main") ) - 1 - 1].find_all("a")])):
-            if()
-
     return links_with_matches
+"""
+"""
+def is_sibling(league_webpage):
+    soup = soup_init(_BASE_URL + league_webpage)
+    adjustment = 0
+    if(_ENDLINK_ORDERINGS['siblings_over_relegation']):
+        adjustment += 1
+    if(not(_ENDLINK_ORDERINGS['promotion_over_siblings'])):
+        adjustment += 1
+    siblings = []
+    siblings_first_order = []
+    for table_a in list(table.find_all("a") for table in soup.find_all("table",class_="main")):
+        if(len(table_a) > 0):
+            siblings.append(table_a)
+    siblings = siblings[len(siblings) - 1 - adjustment]
+    count_if_sibling_of_siblings = 0
 
+    for sibling in siblings:
+        soup_first_order = soup_init(_BASE_URL + sibling.get('href'))
+        for table_a in list(table.find_all("a") for table in soup_first_order.find_all("table",class_="main")):
+            if(len(table_a) > 0):
+                siblings_first_order.append(table_a)
+        print("siblings_first_order before selection",siblings_first_order)
+        siblings_first_order = siblings_first_order[len(siblings) - 1 - adjustment]
+        print("siblings_first_order",siblings_first_order)
+        for sibling_first_order in siblings_first_order:
+            print("sibling_first_order",sibling_first_order)
+            if(sibling_first_order.get('href') == league_webpage):
+                count_if_sibling_of_siblings += 1
+                print("sibling found")
+        siblings_first_order = []
+
+    if(count_if_sibling_of_siblings == len(siblings)):
+        return True
+    else:
+        return False
+"""
+def is_sibling(league_webpage):
+    soup = soup_init(_BASE_URL + league_webpage)
+    table_tag = soup.find("table")
+    league_urls = []
+    count_if_sibling_of_siblings = 0
+    adjustment = 0
+    teams_auto_relegated = 0
+    count_if_sibling_of_siblings = 0
+
+    while(table_tag != None):
+        table_in_table = table_tag.find("table")
+        tags_table_in_table = []
+
+        while(table_in_table != None):
+            tags = table_in_table.find_all(re.compile("[a-z]+"), string=re.compile("(."+_YEAR+".*(klasa|liga|ligi|puchar))|((klasa|liga|ligi|puchar).*"+_YEAR+".*)", re.IGNORECASE))
+            tags_table_in_table.append(tags)
+            table_in_table = table_in_table.find_next("table")
+        for tag in tags_table_in_table:
+            if(len(tag) > 0):
+                for tag_in_tag in tag:
+                    if(tag_in_tag.get('href') == None):
+                        tag.remove(tag_in_tag)
+                    else:
+                        tag[tag.index(tag_in_tag)] = tag_in_tag.get('href')
+                if(len(tag) > 0):
+                    league_urls.append(tag)
+        table_tag = table_tag.find_next("table")
+    
+    if(len(league_urls) == 3):
+        if(_ENDLINK_ORDERINGS['siblings_over_relegation']):
+            adjustment += 1
+        if(not(_ENDLINK_ORDERINGS['promotion_over_siblings'])):
+            adjustment += 1
+    if(len(league_urls) == 2):
+        for color in list(represent_league_table(soup.find("table", class_="main2")).values()):
+            if((re.search("#[D-F].[A-C].[A-C].", color) != None) | (re.search("#[D-F].[0-9].[A-C].", color) != None) | (re.search("#[D-F].[A-C].[0-9].", color) != None) | (re.search("#[D-F].[0-9].[0-9].", color) != None)):
+                teams_auto_relegated += 1
+        if(teams_auto_relegated == 0):
+            if(not(_ENDLINK_ORDERINGS['promotion_over_siblings'])):
+                adjustment += 1
+    if(len(league_urls) == 1):
+        if(type(_PYRAMID_TOPPER) == list):
+            print("non-standard football pyramid with multiple top leagues")
+    
+    siblings = league_urls[len(league_urls) - 1 - adjustment]
+
+    for sibling in siblings:
+        league_urls = []
+        soup = soup_init(_BASE_URL + sibling)
+        table_tag = soup.find("table")
+
+        while(table_tag != None):
+            table_in_table = table_tag.find("table")
+            tags_table_in_table = []
+
+            while(table_in_table != None):
+                tags = table_in_table.find_all(re.compile("[a-z]+"), string=re.compile("(."+_YEAR+".*(klasa|liga|ligi|puchar))|((klasa|liga|ligi|puchar).*"+_YEAR+".*)", re.IGNORECASE))
+                tags_table_in_table.append(tags)
+                table_in_table = table_in_table.find_next("table")
+            for tag in tags_table_in_table:
+                if(len(tag) > 0):
+                    for tag_in_tag in tag:
+                        if(tag_in_tag.get('href') == None):
+                            tag.remove(tag_in_tag)
+                        else:
+                            tag[tag.index(tag_in_tag)] = tag_in_tag.get('href')
+                    if(len(tag) > 0):
+                        league_urls.append(tag)
+            table_tag = table_tag.find_next("table")
+
+        siblings_in_siblings = league_urls[len(league_urls) - 1 - adjustment]
+        
+        for sibling_in_siblings in siblings_in_siblings:
+            if(sibling_in_siblings == league_webpage):
+                count_if_sibling_of_siblings += 1
+    
+    if(count_if_sibling_of_siblings == len(siblings)):
+        return True
+    else:
+        return False
+    
+"""
 def find_siblings_at_level(link): 
     p_pages = []
     pp_pages = []
